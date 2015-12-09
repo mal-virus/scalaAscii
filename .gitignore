@@ -5,6 +5,11 @@ activator
 activator.bat
 activator-launch-*
 RUNNING_PID
+.cache-main
+.classpath
+.project
+.settings/
+
 
 #Files involved in compiles and staging
 **/target
@@ -12,3 +17,4 @@ RUNNING_PID
 
 # Project files
 **/*.conf
+/bin/

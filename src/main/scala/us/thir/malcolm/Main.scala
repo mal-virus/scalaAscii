@@ -8,12 +8,14 @@ import java.net.URL
 object Main extends App {
 	// Test resources
 	val file = new File("test.jpg")
-	val url = new URL("http://lorempixel.com/100/100/")
+	val url = new URL("http://lorempixel.com/125/125/")
 
-	val image = ImageIO.read(file)
+	val image = ImageIO.read(url)
 	val myScii = new Ascii(image)
 	
-	val output = new PrintWriter(new File("output.txt"))
+	
+	println(myScii.toString)
+	/*val output = new PrintWriter(new File("output.txt"))
 	output.print(myScii.toString)
-	output.close
+	output.close*/
 }

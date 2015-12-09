@@ -6,17 +6,15 @@ import java.awt.image.BufferedImage
 class PixelBlock private(grays: Int*) {
 	private var mean = (grays.sum / grays.size).toInt
 	def invert = mean = 256 - mean
-	def toAscii = mean match {
-		case x if 0 until 50 contains x => "@"
-		case x if 50 until 70 contains x => "#"
-		case x if 70 until 100 contains x => "8"
-		case x if 100 until 130 contains x => "&"
-		case x if 130 until 160 contains x => "o"
-		case x if 160 until 180 contains x => ":"
-		case x if 180 until 200 contains x => "*"
-		case x if 200 until 230 contains x => "."
-		case _ => " " 
-	}
+	private val characters = Array(
+	    "$","@","B","%","8","&","W","M","#","0","*","o","a","h","h","b","d",
+	    "p","q","w","m","Z","O","Q","L","C","J","U","Y","X","z","c","v","u",
+	    "n","x","r","j","f","t","/","\\","|","(",")","1","{","}","[","]","?",
+	    "-","_","+","~","<",">","i","!","l","I",";",":",",","\"","^","`","'",
+	    "."," ")
+	private val step = (256d/characters.length)
+	
+	lazy val toAscii = characters((mean/step).toInt.min(characters.length-1))
 }
 
 object PixelBlock {
@@ -28,7 +26,7 @@ object PixelBlock {
 
 		new PixelBlock(grays:_*)
 	}
-
+	
 	def fromRgb(r: Int, g: Int, b: Int) = (r*0.21+g*0.72+b*0.07).toInt
 }
 
