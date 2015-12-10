@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage
 
 class PixelBlock private(grays: Int*) {
 	private var mean = (grays.sum / grays.size).toInt
-	def invert = mean = 256 - mean
+	def invert() = mean = 256 - mean
 	private val characters = Array(
 	    "$","@","B","%","8","&","W","M","#","0","*","o","a","h","h","b","d",
 	    "p","q","w","m","Z","O","Q","L","C","J","U","Y","X","z","c","v","u",
@@ -35,16 +35,20 @@ class Ascii(originalImage: BufferedImage, pixelSquareLength: Int = 1) {
 	val w = originalImage.getWidth
 	val h = originalImage.getHeight
 
+	
+	var lines = Seq[String]()
 	var sequence = ""
 	for(y<-0 until h) {
-		if(sequence.length!=0) sequence = sequence + "\n"
+		if(sequence.length!=0) 
+		  lines = lines :+ sequence
+		sequence = ""
 		for(x<-0 until w) {
 			val color = new Color(originalImage.getRGB(x,y))
 			val pixel = PixelBlock(PixelBlock.fromRgb(color.getRed,color.getGreen,color.getBlue))
 			pixel.invert
-			sequence = sequence + pixel.toAscii
+			sequence = sequence + pixel.toAscii + " "
 		}
 	}
-
-	override def toString = sequence
+	def toLines = lines
+	override def toString = lines.foldLeft("")((z,x) => z.concat(x))
 }
