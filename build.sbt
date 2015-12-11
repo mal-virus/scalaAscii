@@ -40,6 +40,8 @@ val platform = {
   platformName
 }
 
+resolvers += "ImageJ Releases" at "http://maven.imagej.net/content/repositories/releases/"
+
 libraryDependencies ++= Seq(
   "org.bytedeco" % "javacv" % javacvVersion excludeAll(
     ExclusionRule(organization = "org.bytedeco.javacpp-presets"),
