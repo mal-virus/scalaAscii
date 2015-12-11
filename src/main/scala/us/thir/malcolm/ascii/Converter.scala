@@ -1,6 +1,8 @@
 package us.thir.malcolm.ascii
 
 import java.awt.Color
+import java.awt.Font
+import java.awt.font.FontRenderContext
 import java.awt.image.BufferedImage
 
 class PixelBlock private(grays: Int*) {
@@ -32,12 +34,12 @@ object PixelBlock {
 
 class Ascii(originalImage: BufferedImage, pixelSquareLength: Int = 1) {
 	if(pixelSquareLength<1) throw new IllegalArgumentException("You can't have a pixel block smaller than one pixel")
-	val w = originalImage.getWidth
-	val h = originalImage.getHeight
+	private val w = originalImage.getWidth
+	private val h = originalImage.getHeight
 
 	
 	var lines = Seq[String]()
-	var sequence = ""
+	private var sequence = ""
 	for(y<-0 until h) {
 		if(sequence.length!=0) 
 		  lines = lines :+ sequence
@@ -50,5 +52,29 @@ class Ascii(originalImage: BufferedImage, pixelSquareLength: Int = 1) {
 		}
 	}
 	def toLines = lines
-	override def toString = lines.foldLeft("")((z,x) => z.concat(x))
+	override def toString = lines.foldLeft("")((z,x) => z.concat("\n").concat(x))
+	def toImage = {
+		val font = new Font("Courier", Font.PLAIN, 10)
+		val frc = new FontRenderContext(null, true, true)
+		val bounds = font.getStringBounds(lines(0), frc)
+		val w = bounds.getWidth.toInt
+		val lineH = bounds.getHeight.toInt
+		val h = lineH*lines.size
+
+		val image = new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB)
+		val graphic = image.createGraphics
+ 
+		graphic setColor Color.BLACK
+		graphic.fillRect(0, 0, w, h)
+		graphic setColor Color.WHITE
+		graphic setFont font
+		val rootPixel = bounds.getY.toFloat
+		var lineNumber = 0
+		for(line<-lines) {
+			graphic.drawString(line, bounds.getX.toFloat, rootPixel+lineNumber*lineH)
+			lineNumber += 1
+ 		}
+		graphic.dispose()
+		image
+	}
 }
