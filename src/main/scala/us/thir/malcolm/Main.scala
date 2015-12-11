@@ -29,7 +29,7 @@ object Main extends App {
 	var count = 150
 	while (count>0) {
 		val frame = grabber.grab()
-		val ascii = new Ascii(frame.getBufferedImage)
+		val ascii = new AsciiImage(frame.getBufferedImage)
 		canvas.showImage(ascii.toImage)
  		count -= 1
 	}
@@ -37,19 +37,30 @@ object Main extends App {
 	grabber.stop()
 	canvas.dispose()
 
-
-	 /***************
+	
+	/***************
 	*Test resources*
 	***************/
 	val url = new URL("http://lorempixel.com/125/125/")
 	val image1 = ImageIO.read(url)
-	val myAscii = new Ascii(image1)
-	println(myAscii.toString)
+	val myAscii = new AsciiImage(image1)
 	val output = new PrintWriter(new File("output.txt"))
 	output.print(myAscii.toString)
 	output.close
-
+	
 	val file = new File("Koala.jpg")
 	val image2 = ImageIO.read(file)
-	ImageIO.write(new Ascii(image2).toImage, "jpeg", new File("output.jpeg"));
+	ImageIO.write(new AsciiImage(image2).toImage, "jpeg", new File("output.jpeg"));
+	
+	val gif = new File("kermit.gif")
+	val asciiGif = new AsciiGif(ImageIO.createImageInputStream(gif))
+	
+	val gifcanvas = new CanvasFrame("GifCamAS")
+	gifcanvas.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE)
+	for(i<-0 until 6)
+	  for(image<-asciiGif.frames)
+	    canvas.showImage(image)
+	canvas.dispose
+	
+	asciiGif.toFile(new File("output.gif"))
 }
