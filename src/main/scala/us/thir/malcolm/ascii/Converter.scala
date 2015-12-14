@@ -14,19 +14,22 @@ import javax.imageio.IIOImage
 import javax.imageio.metadata.IIOMetadataNode
 import org.w3c.dom.Node
 import javax.imageio.metadata.IIOMetadata
+import javax.imageio.stream.FileImageOutputStream
 
 class PixelBlock private(grays: Int*) {
 	private var mean = (grays.sum / grays.size).toInt
 	def invert() = mean = 256 - mean
 	private val characters = Array(
-	    "$","@","B","%","8","&","W","M","#","0","*","o","a","h","h","b","d",
-	    "p","q","w","m","Z","O","Q","L","C","J","U","Y","X","z","c","v","u",
-	    "n","x","r","j","f","t","/","\\","|","(",")","1","{","}","[","]","?",
-	    "-","_","+","~","<",">","i","!","l","I",";",":",",","\"","^","`","'",
-	    "."," ")
-	private val step = (256d/characters.length)
+	    " ",".","'","`","^","\"",",",":",";",
+	    "I","l","!","i","<","~","+","_","-",
+	    "?","[","{","1","(","|","/","t","f",
+	    "j","r","x","n","u","v","c","z","X",
+	    "Y","U","J","C","L","Q","O","Z","m",
+	    "w","p","b","h","a","o","*","0","#",
+	    "M","W","&","8","%","b","@","$")
+	private val conversion = (256d/characters.length)
 	
-	lazy val toAscii = characters((mean/step).toInt.min(characters.length-1))
+	lazy val toAscii = characters((mean/conversion).toInt.min(characters.length-1))
 }
 
 object PixelBlock {
@@ -40,75 +43,75 @@ object PixelBlock {
 	}
 }
 
-class AsciiImage(originalImage: BufferedImage, pixelSquareLength: Int = 1) extends Ascii {
+class AsciiImage(originalImage: BufferedImage, invert: Boolean = false, pixelSquareLength: Int = 1) extends Ascii {
 	if(pixelSquareLength<1) throw new IllegalArgumentException("You can't have a pixel block smaller than one pixel")
-	val lines = buffIm2SeqStr(originalImage)
+	val lines = buffIm2SeqStr(originalImage, invert)
 	override def toString = lines.foldLeft("")((z,x) => z.concat(x).concat("\n"))
 	lazy val toImage = seqStr2buffIm(lines)
 }
 
-class AsciiGif(originalImageStream: ImageInputStream) extends Ascii {
+class AsciiGif(originalImageStream: ImageInputStream, invert: Boolean = false) extends Ascii {
   private val reader = new GIFImageReader(new GIFImageReaderSpi())
   reader.setInput(originalImageStream)
-  val lines = Seq[Seq[String]]()
+  var lines = Seq[Seq[String]]()
+  
   for(i<-0 until reader.getNumImages(true)) {
-    lines :+ buffIm2SeqStr(reader.read(i))
+    lines = lines :+ buffIm2SeqStr(reader.read(i),invert)
   }
+  reader.dispose()
   
-  lazy val frames = lines.map { x => seqStr2buffIm(x) }
+  def length = lines.length
   
-  def toFile(file: File, delay: Int=1) = {
-    if(delay<1)
-			throw new IllegalArgumentException("Delay must be greater than 0")
+  def apply(index: Int) = seqStr2buffIm(lines(index))
+  
+  def toFile(file: File, delay: Int=5) = {
+    if(delay<0)
+			throw new IllegalArgumentException("Delay must be positive")
     
-    val writer = ImageIO.getImageWritersByFormatName("gif").next()
-    val stream = ImageIO.createImageOutputStream(file)
-    writer.setOutput(stream)
-    writer.prepareWriteSequence(null)
-    
-    def getGraphicController(root: Node): Node = {
+    def getNodeByName(root: Node, nodeName: String): Node = {
       var holder = root.getFirstChild
       while(holder!=null) {
-        if("GraphicControlExtension".equals(holder.getNodeName))
+        if(nodeName.equals(holder.getNodeName))
             return holder
         holder = holder.getNextSibling
       }
-      null
+      val createdNode = new IIOMetadataNode(nodeName)
+      root.appendChild(createdNode)
+      return createdNode
     }
     
-    def setRootAttributes(image: BufferedImage, meta: IIOMetadata) = {
-      val format = meta.getNativeMetadataFormatName
-      val root = meta.getAsTree(format)
-      val aes = new IIOMetadataNode("ApplicationExtensions")
-      val ae = new IIOMetadataNode("ApplicationExtension")
-      ae.setAttribute("applicationId", "NETSCAPE")
-      ae.setAttribute("authenticationCode", "2.0")
-      val userObject: Array[Byte] = Array(0x1,0x0,0x0)
-      ae.setUserObject(userObject)
-      aes.appendChild(ae)
-      root.appendChild(aes)
-    }
     
-    def setAttributes(image: BufferedImage, meta: IIOMetadata) = {
-      val format = meta.getNativeMetadataFormatName
-      val root = meta.getAsTree(format)
-      val controller =  getGraphicController(root).asInstanceOf[IIOMetadataNode]
-      controller.setAttribute("userDelay", "FALSE")
-      controller.setAttribute("delayTime", delay.toString())
-      meta.setFromTree(format, root)
-    }
+    val writer = ImageIO.getImageWritersByFormatName("gif").next()
+    val stream = new FileImageOutputStream(file)
+    val imageParam = writer.getDefaultWriteParam
     
+    
+    val imageMeta = writer.getDefaultImageMetadata(
+          ImageTypeSpecifier.createFromBufferedImageType(seqStr2buffIm(lines(0)).getType),
+          imageParam)
+    
+          
     // We need to create the app extension code
-    setRootAttributes(
-        frames(0),
-        writer.getDefaultImageMetadata(new ImageTypeSpecifier(frames(0)), writer.getDefaultWriteParam)
-        )
+    val root = imageMeta.getAsTree(imageMeta.getNativeMetadataFormatName)
+    val graphics =  getNodeByName(root, "GraphicControlExtension").asInstanceOf[IIOMetadataNode]
+    graphics.setAttribute("userInputFlag", "FALSE")
+    graphics.setAttribute("delayTime", delay.toString())
+    graphics.setAttribute("disposalMethod", "none")
     
-    for(image<-frames) {
-      val meta = writer.getDefaultImageMetadata(new ImageTypeSpecifier(image), writer.getDefaultWriteParam)
-      setAttributes(image,meta)
-      writer.writeToSequence(new IIOImage(image,null,meta), null)
-    }
+    val aes = getNodeByName(root,"ApplicationExtensions")
+    val ae = new IIOMetadataNode("ApplicationExtension")
+    ae.setAttribute("applicationID", "NETSCAPE")
+    ae.setAttribute("authenticationCode", "2.0")
+    val userObject: Array[Byte] = Array(1.toByte,0.toByte,0.toByte)
+    ae.setUserObject(userObject)
+    aes.appendChild(ae)
+    
+    imageMeta.setFromTree(imageMeta.getNativeMetadataFormatName, root)
+    writer.setOutput(stream)
+    writer.prepareWriteSequence(null)
+    
+    for(frame<-lines)
+      writer.writeToSequence(new IIOImage(seqStr2buffIm(frame),null,imageMeta), imageParam)
     
     writer.endWriteSequence()
     stream.close()
@@ -121,7 +124,7 @@ trait Ascii {
   protected val font = new Font("Courier", Font.PLAIN, 10)
   protected val frc = new FontRenderContext(null, true, true)
   protected def grayFromRgb(r: Int, g: Int, b: Int) = (r*0.21+g*0.72+b*0.07).toInt
-  protected def buffIm2SeqStr(original: BufferedImage) = {
+  protected def buffIm2SeqStr(original: BufferedImage, invert: Boolean = false) = {
   val w = original.getWidth
 	val h = original.getHeight
     var lines = Seq[String]()
@@ -133,7 +136,7 @@ trait Ascii {
 	  	for(x<-0 until w) {
 		  	val color = new Color(original.getRGB(x,y))
 		  	val pixel = PixelBlock(grayFromRgb(color.getRed,color.getGreen,color.getBlue))
-		  	pixel.invert
+		  	if(invert) pixel.invert
 			  sequence = sequence + pixel.toAscii + " "
 	  	}
 	  }
