@@ -1,17 +1,13 @@
 package us.thir.malcolm
 
-import us.thir.malcolm.ascii._
-import javax.imageio.ImageIO
-import java.io.{File,PrintWriter}
+import java.io.File
 import java.net.URL
-import org.bytedeco.javacpp.helper.opencv_core.AbstractCvScalar
-import org.bytedeco.javacpp.opencv_core._
-import org.bytedeco.javacpp.opencv_objdetect.CascadeClassifier
-import org.bytedeco.javacpp.{opencv_imgproc, opencv_core}
+
+import org.bytedeco.javacv.{CanvasFrame,OpenCVFrameGrabber}
 import org.bytedeco.javacv.FrameGrabber.ImageMode
-import org.bytedeco.javacv.{OpenCVFrameGrabber, CanvasFrame}
-import java.awt.image.BufferedImage
-import java.awt.Color
+
+import javax.imageio.ImageIO
+import us.thir.malcolm.ascii._
 
 object Main extends App {
 	val canvas = new CanvasFrame("Asciicam")
@@ -29,27 +25,27 @@ object Main extends App {
 	var count = 150
 	while (count>0) {
 		val frame = grabber.grab()
-		val ascii = new Ascii(frame.getBufferedImage)
+		val ascii = new AsciiImage(frame.getBufferedImage)
 		canvas.showImage(ascii.toImage)
  		count -= 1
 	}
 
 	grabber.stop()
 	canvas.dispose()
-
-
-	 /***************
+	
+	/***************
 	*Test resources*
 	***************/
 	val url = new URL("http://lorempixel.com/125/125/")
 	val image1 = ImageIO.read(url)
-	val myAscii = new Ascii(image1)
-	println(myAscii.toString)
-	val output = new PrintWriter(new File("output.txt"))
-	output.print(myAscii.toString)
-	output.close
-
+	ImageIO.write(image1, "jpeg", new File("input1.jpeg"))
+	ImageIO.write(new AsciiImage(image1).toImage, "jpeg", new File("output1.jpeg"));
+	
 	val file = new File("Koala.jpg")
 	val image2 = ImageIO.read(file)
-	ImageIO.write(new Ascii(image2).toImage, "jpeg", new File("output.jpeg"));
+	ImageIO.write(new AsciiImage(image2).toImage, "jpeg", new File("output2.jpeg"));
+	
+	val gif = new File("kermit.gif")
+	val asciiGif = new AsciiGif(ImageIO.createImageInputStream(gif))
+	asciiGif.toFile(new File("output3.gif"))
 }
